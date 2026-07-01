@@ -3,7 +3,7 @@ from flask import Flask, request, jsonify, render_template
 from dotenv import load_dotenv
 
 # Import langchain components as specified
-from langchain_chroma import Chroma
+from langchain_pinecone import PineconeVectorStore
 from langchain_mistralai import ChatMistralAI, MistralAIEmbeddings
 from langchain_core.prompts import ChatPromptTemplate
 
@@ -19,10 +19,10 @@ try:
         model="mistral-embed"
     )
     
-    # Load the Chroma database using those embeddings from chroma_dbbb directory
-    vectorstore = Chroma(
-        persist_directory="chroma_dbbb",
-        embedding_function=embedding_model
+    # Load the Pinecone vector store using those embeddings
+    vectorstore = PineconeVectorStore(
+        index_name=os.getenv("PINECONE_INDEX_NAME"),
+        embedding=embedding_model,
     )
     
     # Configure the retriever with MMR and parameters: k=4, fetch_k=10, lambda_mult=0.5

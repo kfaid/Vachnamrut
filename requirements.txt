@@ -2,8 +2,8 @@ Flask
 langchain
 langchain-core
 langchain-community
-langchain-chroma
+langchain-pinecone
 langchain-mistralai
-chromadb
 python-dotenv
 gunicorn
+pinecone

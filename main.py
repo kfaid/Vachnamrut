@@ -1,87 +1,99 @@
 from dotenv import load_dotenv
-# pyrefly: ignore [missing-import]
-from langchain_community.embeddings import HuggingFaceEmbeddings
-# pyrefly: ignore [missing-import]
-from langchain_mistralai import MistralAIEmbeddings
-# pyrefly: ignore [missing-import]
-from langchain_community.vectorstores import Chroma
-# pyrefly: ignore [missing-import]
-from langchain_mistralai import ChatMistralAI
-# pyrefly: ignore [missing-import]
+import os
+
+from langchain_mistralai import ChatMistralAI, MistralAIEmbeddings
+from langchain_pinecone import PineconeVectorStore
 from langchain_core.prompts import ChatPromptTemplate
 
 load_dotenv()
 
-# embedding_model = HuggingFaceEmbeddings(
-#     model_name="sentence-transformers/all-MiniLM-L6-v2"
-# )
-
+# -----------------------------
+# Embedding Model
+# -----------------------------
 embedding_model = MistralAIEmbeddings(
     model="mistral-embed"
 )
 
-vectorstore = Chroma(
-    persist_directory= "chroma_dbbb",
-    embedding_function=embedding_model
+# -----------------------------
+# Pinecone Vector Store
+# -----------------------------
+vectorstore = PineconeVectorStore(
+    index_name=os.getenv("PINECONE_INDEX_NAME"),
+    embedding=embedding_model,
 )
 
 retriever = vectorstore.as_retriever(
-    search_type = "mmr",
-    search_kwargs = {
-        "k" : 4,
-        "fetch_k":10,
-        "lambda_mult" :0.5
-    }
+    search_type="mmr",
+    search_kwargs={
+        "k": 4,
+        "fetch_k": 10,
+        "lambda_mult": 0.5,
+    },
 )
 
-llm = ChatMistralAI(model = "mistral-small-2506")
+# -----------------------------
+# LLM
+# -----------------------------
+llm = ChatMistralAI(
+    model="mistral-small-2506"
+)
 
-#prompt template 
+# -----------------------------
+# Prompt
+# -----------------------------
 prompt = ChatPromptTemplate.from_messages(
     [
         (
             "system",
-            """You are a helpful AI assistant.
+            """
+You are a helpful AI assistant.
 
-Use ONLY the provided context to answer the question.
+Answer ONLY using the provided context.
 
-If the answer is not present in the context,
-say: "I could not find the answer in the document."
+If the answer is not present in the context, reply exactly:
+
+"I could not find the answer in the document."
+
+Keep your answer concise and do not use Markdown formatting.
 """
         ),
         (
             "human",
-            """Context:
+            """
+Context:
 {context}
 
 Question:
 {question}
 """
-        )
+        ),
     ]
 )
 
-print("Rag system created ")
-
-print("press 0 to exit ")
+print("✅ RAG System Created")
+print("Type 0 to exit.\n")
 
 while True:
-    query = input("You : ")
+    query = input("You: ")
+
     if query == "0":
-        break 
-    
+        break
+
+    # Retrieve documents
     docs = retriever.invoke(query)
 
     context = "\n\n".join(
-        [doc.page_content for doc in docs]
+        doc.page_content for doc in docs
     )
-    
-    final_prompt = prompt.invoke({
-        "context" :context,
-        "question": query
-    })
-    
+
+    final_prompt = prompt.invoke(
+        {
+            "context": context,
+            "question": query,
+        }
+    )
+
     response = llm.invoke(final_prompt)
 
-    print(f"\n AI: {response.content}")
-    
+    print("\nAI:", response.content)
+    print("-" * 80)
